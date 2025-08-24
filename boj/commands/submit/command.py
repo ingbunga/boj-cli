@@ -1,5 +1,6 @@
 import dataclasses
 import os
+import time
 
 from rich.console import Console
 
@@ -9,7 +10,7 @@ from boj.core.fs.file_object import TextFile
 from boj.core.fs.file_search_strategy import StaticSearchStrategy, UpwardSearchStrategy
 from boj.core.fs.repository import Repository
 from boj.core.html import HtmlParser
-from boj.core.http import HtmlResponse
+from boj.core.http import HtmlResponse, JsonResponse
 from boj.data.config import Config
 from boj.data.boj_info import BojInfo
 from boj.core import constant
@@ -21,6 +22,7 @@ from boj.web.boj_submit_page import (
     BojSubmitPostRequest,
     make_submit_post_body,
 )
+from boj.web.turnstile_solver_api import TurnstileSolverApiRequest, TurnstileSolverResultRequest
 from boj.commands.submit import websocket
 
 
@@ -33,6 +35,7 @@ class SubmitCommand(Command):
     text_file_repository: Repository[TextFile]
     csrf_key_parser: HtmlParser[str]
     solution_id_parser: HtmlParser[str]
+    cf_sitekey_parser: HtmlParser[str]
 
     def execute(self, args):
         config = self.config_repository.find()
@@ -55,15 +58,29 @@ class SubmitCommand(Command):
                 http.get(BojSubmitPageRequest(boj_info.id, session.session_cookies))
             )
             csrf_key = self.csrf_key_parser.find(submit_page.html)
+            cf_sitekey = self.cf_sitekey_parser.find(submit_page.html)
 
             source_code = self.text_file_repository.find(
                 cwd=boj_info.metadata.dir,
                 query=boj_info.source_path(abs_=False),
             )
 
+            turnstile_response = JsonResponse(
+                http.get(TurnstileSolverApiRequest(constant.boj_submit_url(boj_info.id), cf_sitekey))
+            )
+            turnstile_task_id: str = turnstile_response.raw.json().get("task_id")
+            turnstile_value = None
+            while not turnstile_value:
+                turnstile_result = JsonResponse(
+                    http.get(TurnstileSolverResultRequest(turnstile_task_id))
+                )
+                turnstile_value = turnstile_result.raw.json().get("value")
+                if not turnstile_value:
+                    time.sleep(1)
+
             status.update("Submitting source code..")
             session_cookies = session.session_cookies
-            data = make_submit_post_body(boj_info, csrf_key, source_code, args.open)
+            data = make_submit_post_body(boj_info, csrf_key, source_code, args.open, turnstile_value)
             status_page = HtmlResponse(
                 http.post(BojSubmitPostRequest(boj_info.id, session_cookies, data))
             )

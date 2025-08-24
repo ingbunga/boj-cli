@@ -11,7 +11,7 @@ from boj.data.boj_info import BojInfo
 
 
 def make_submit_post_body(
-    boj_info: BojInfo, csrf_key: str, source_code: TextFile, open_: str
+    boj_info: BojInfo, csrf_key: str, source_code: TextFile, open_: str, turnstile_response: str
 ):
     return {
         "csrf_key": csrf_key,
@@ -19,6 +19,7 @@ def make_submit_post_body(
         "language": boj_info.language,
         "code_open": open_,
         "source": source_code.content,
+        "cf-turnstile-response": turnstile_response
     }
 
 
@@ -83,3 +84,22 @@ class CsrfKeyParser(HtmlParser):
                 return tag["value"]
 
         raise FatalError("failed to query csrf token.")
+
+
+class CfSiteKeyParser(HtmlParser):
+    def find(self, html) -> str:
+        # Parse the submit page
+        soup = BeautifulSoup(html, "html.parser")
+
+        turnsiltle_div = soup.select_one("div.cf-turnstile")
+        if not turnsiltle_div:
+            raise FatalError("failed to query cf-turnstile div.")
+        # get data-sitekey
+        site_key = turnsiltle_div["data-sitekey"]
+        if not site_key:
+            raise FatalError("failed to query cf-turnstile site key.")
+        
+        if isinstance(site_key, list):
+            site_key = site_key[0]
+
+        return site_key

@@ -28,6 +28,14 @@ def boj_websocket_url():
 def solved_ac_home_url():
     return "https://solved.ac/api/v3"
 
+def turnstile_solver_url():
+    return os.getenv("TURNSTILE_SOLVER_SERVER", "http://localhost:5000")
+
+def turnstile_solver_api_url(url: str, sitekey: str):
+    return f"{turnstile_solver_url()}/turnstile?url={url}&sitekey={sitekey}"
+
+def turnstile_solver_result_url(req_id: str):
+    return f"{turnstile_solver_url()}/result?id={req_id}"
 
 def solved_ac_search_url():
     return f"{solved_ac_home_url()}/search"

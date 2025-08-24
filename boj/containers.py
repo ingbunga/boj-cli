@@ -23,7 +23,7 @@ from boj.data.config import ConfigFileSerializer, ConfigRepository
 from boj.data.credential import CredentialRepository, CredentialSerializer
 from boj.web.boj_problem_page import TitleParser, TestcaseParser
 from boj.web.boj_status_page import SolutionIdParser
-from boj.web.boj_submit_page import CsrfKeyParser
+from boj.web.boj_submit_page import CsrfKeyParser, CfSiteKeyParser
 
 
 @dataclasses.dataclass
@@ -115,6 +115,7 @@ class Container(containers.DeclarativeContainer):
                 text_file_repository=text_file_repository,
                 csrf_key_parser=CsrfKeyParser(),
                 solution_id_parser=SolutionIdParser(),
+                cf_sitekey_parser=CfSiteKeyParser()
             ),
             open=providers.Factory(
                 OpenCommand,
