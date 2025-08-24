@@ -71,10 +71,10 @@ class SubmitCommand(Command):
             turnstile_task_id: str = turnstile_response.raw.json().get("task_id")
             turnstile_value = None
             while not turnstile_value:
-                turnstile_result = JsonResponse(
-                    http.get(TurnstileSolverResultRequest(turnstile_task_id))
-                )
-                turnstile_value = turnstile_result.raw.json().get("value")
+                get_response = http.get(TurnstileSolverResultRequest(turnstile_task_id))
+                if get_response.text != "CAPTCHA_NOT_READY":
+                    turnstile_result = JsonResponse(get_response)
+                    turnstile_value = turnstile_result.raw.json().get("value")
                 if not turnstile_value:
                     time.sleep(1)
 
